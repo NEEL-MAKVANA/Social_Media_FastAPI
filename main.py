@@ -276,8 +276,6 @@ def authentication(auth_user: Auth_schema):
     )
     print("mail sent")
     server.quit()
-    # global otp_timer
-    # otp_timer = datetime.now() + timedelta(minutes=1)  # for one minute
     return "otp generation successfull"
 
 
@@ -291,14 +289,24 @@ def final_authentication(final_auth: Final_Auth_schema):
         db.query(User).filter(User.email == final_auth.email).first()
     )
 
+    if not find_user_from_usertable:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Email not found"
+        )
+
     find_user_acc_otp = (
         db.query(Otp)
         .filter((Otp.otp == final_auth.otp) & (Otp.email == final_auth.email))
         .first()
     )
-    prev_time = find_user_acc_otp.created_at
-    print(prev_time)
 
+    if not find_user_acc_otp:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="otp and email not found"
+        )
+
+    prev_time = find_user_acc_otp.created_at
+    # print(prev_time)
     curr_time = datetime.utcnow()
 
     if (curr_time - prev_time) > timedelta(seconds=60):
@@ -306,26 +314,22 @@ def final_authentication(final_auth: Final_Auth_schema):
         db.commit()
         return "Otp Expires"
 
-    if not find_user_acc_otp:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
     find_user_from_usertable.isverified = True
     find_user_from_usertable.isactive = True
     find_user_from_usertable.isdeleted = False
+
     db.delete(find_user_acc_otp)
     db.commit()
 
-    # payload = {"user_id": find_user_from_usertable.id}
     payload = {
         "user_id": find_user_from_usertable.id,
-        "exp": datetime.utcnow() + timedelta(minutes=10),
+        "exp": datetime.utcnow() + timedelta(minutes=5),
     }
 
     access_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     print(type(access_token))
 
     return {"access_token": access_token}
-    # return "Authentication successful"
 
 
 # OAuth2 scheme
@@ -345,12 +349,14 @@ async def protected_resource(token: str = Security(oauth2_scheme_data_access)):
             )
 
         # Fetch user data using `user_id`
-        user = db.query(User).filter(User.id == user_id)
+        user = db.query(User).filter(User.id == user_id).first()
 
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-        return {"message": f"Congooo!! you have an acces of very crucial data"}
+        return {
+            "message": f"Congooo {user.id}!! you have an acces of very crucial data"
+        }
 
     except JWTError:
         raise HTTPException(
