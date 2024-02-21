@@ -121,7 +121,7 @@ def add_user(user: Users):
     find_user_isverified_true = (
         db.query(User)
         .filter(
-            ((User.uname == user.uname) | (User.email == user.email))
+            ((User.uname == user.uname) & (User.email == user.email))
             & (User.isverified == True)
         )
         .first()
@@ -130,31 +130,42 @@ def add_user(user: Users):
     find_user_isverified_false = (
         db.query(User)
         .filter(
-            ((User.uname == user.uname) | (User.email == user.email))
+            ((User.uname == user.uname) & (User.email == user.email))
             & (User.isverified == False)
         )
         .first()
     )
 
-    # print(type(find_user))
-
-    # if find_user.isverified == False:
-    #     return "This user need to authenticate using email"
-
     if find_user_isverified_true:
         raise HTTPException(
             status_code=status.HTTP_406_NOT_ACCEPTABLE,
-            detail="person already exist and already verified with this email id or userid",
+            detail="person already exist and already verified with this email id and userid",
         )
 
     if find_user_isverified_false:
 
-        # find_user_isverified_false.isactive=True
-        # find_user_isverified_false.isdeleted=False
+        find_user_isverified_false.isactive = True
+        find_user_isverified_false.isdeleted = False
+        db.add(find_user_isverified_false)
+        db.commit()
 
         raise HTTPException(
             status_code=status.HTTP_406_NOT_ACCEPTABLE,
             detail="person already exist but didnt verified yet !",
+        )
+
+    find_user_name = db.query(User).filter(User.uname == user.uname).first()
+
+    if find_user_name:
+        raise HTTPException(
+            status_code=status.HTTP_302_FOUND, detail="User name already taken"
+        )
+
+    find_user_email = db.query(User).filter(User.email == user.email).first()
+
+    if find_user_email:
+        raise HTTPException(
+            status_code=status.HTTP_302_FOUND, detail="User email already taken"
         )
 
     hashed_password = pwd_context.hash(user.password)
@@ -183,21 +194,16 @@ def add_user(user: Users):
 )
 def put_user(uname: str, user: Update_Users):
     find_user = db.query(User).filter(User.uname == uname).first()
-    # user_dict = user.model_dump()
 
     if not find_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    # print(find_user.fname)
     hashed_password = pwd_context.hash(user.password)
     find_user.fname = user.fname
     find_user.lname = user.lname
     find_user.password = hashed_password
-    # find_user.isverified = True
     pass_checker(user.password, hashed_password)
     db.add(find_user)
-    # print(user)
-    # find_user.update(user)
     db.commit()
     return find_user
 
