@@ -23,7 +23,7 @@ class User(Base):
     password = Column(String(70), nullable=False)
     isdeleted = Column(Boolean, default=False, nullable=False)
     iscreated = Column(DateTime, default=datetime.utcnow())
-    ismodified = Column(DateTime, default=datetime.utcnow())
+    ismodified = Column(DateTime, default=datetime.utcnow(), onupdate=datetime.utcnow)
     isactive = Column(Boolean, default=True)
     isverified = Column(Boolean, default=False)
 

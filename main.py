@@ -72,7 +72,6 @@ class Print_user(BaseModel):
 
 class Auth_schema(BaseModel):
     email: str
-    # password: str
 
 
 class Final_Auth_schema(BaseModel):
@@ -213,7 +212,7 @@ def put_user(uname: str, user: Update_Users):
 def delete_user(uname: str):
     find_user = db.query(User).filter(User.uname == uname).first()
 
-    if find_user is not None:
+    if find_user:
 
         find_user.isactive = False
         find_user.isdeleted = True
@@ -236,12 +235,11 @@ def delete_user(uname: str):
 @app.get("/get_allopts", response_model=list[All_Otp], status_code=status.HTTP_200_OK)
 def get_all_otp():
     all_otp = db.query(Otp).all()
-    print("\n\n\n")
     print(all_otp)
-    print("\n\n\n\n\n")
-    # if not all_otp:
-    #     return "Otp doesn't exist"
-
+    if not all_otp:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="otp table is empty "
+        )
     return all_otp
 
 
