@@ -1,0 +1,36 @@
+ {
+    "fname": "neel",
+    "lname": "makvana",
+    "uname": "nk168",
+    "email": "string"
+  },
+  {
+    "fname": "meet",
+    "lname": "k",
+    "uname": "mk168",
+    "email": "mk@gmail.com"
+  },
+  {
+    "fname": "hardik",
+    "lname": "bhai",
+    "uname": "hdd",
+    "email": "h@gmail.com"
+  },
+  {
+    "fname": "string",
+    "lname": "string",
+    "uname": "hdd678",
+    "email": "h67@gmail.com"
+  },
+  {
+    "fname": "string",
+    "lname": "string",
+    "uname": "hdd6782",
+    "email": "h6732@gmail.com"
+  },
+  {
+    "fname": "string",
+    "lname": "string",
+    "uname": "hdd326782",
+    "email": "h673322@gmail.com"
+  }
