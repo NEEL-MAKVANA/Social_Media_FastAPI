@@ -4,20 +4,6 @@ from database.db_config import Base, engine
 import uuid
 from datetime import datetime
 
-# from sqlalchemy import create_engine
-# from sqlalchemy.orm import sessionmaker, declarative_base
-
-# engine = create_engine(
-#     "postgresql://postgres:nk168@localhost/Authentication", echo=True
-# )
-
-# Base = declarative_base()
-
-# # Bind the engine to the Base class
-# Base.metadata.bind = engine
-
-# SessionLocal = sessionmaker(bind=engine)
-
 
 def uuid_generator():
     return str(uuid.uuid4())

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routers.user import auth_router
+from src.routers.user import auth_router
 
 
 app = FastAPI(title="User Authentication System")

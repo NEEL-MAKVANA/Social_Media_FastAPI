@@ -1,15 +1,15 @@
 from fastapi import APIRouter
 from fastapi import FastAPI, HTTPException, status, Depends, Security
 from database.db_config import SessionLocal
-from models.user import User
-from models.otp import Otp
+from src.models.user import User
+from src.models.otp import Otp
 from passlib.context import CryptContext
 import smtplib
 from datetime import datetime, timedelta
 import random
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from schemas.user import (
+from src.schemas.user import (
     Print_user,
     Users,
     Update_Users,
