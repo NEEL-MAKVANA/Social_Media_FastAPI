@@ -6,4 +6,8 @@ engine = create_engine(
 )
 
 Base = declarative_base()
+
+# Bind the engine to the Base class
+Base.metadata.bind = engine
+
 SessionLocal = sessionmaker(bind=engine)
