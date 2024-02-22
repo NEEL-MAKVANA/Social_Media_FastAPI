@@ -1,13 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
+from database.url_config import url
 
-engine = create_engine(
-    "postgresql://postgres:nk168@localhost/Authentication", echo=True
-)
+engine = create_engine(url, echo=True)
 
 Base = declarative_base()
-
-# Bind the engine to the Base class
-Base.metadata.bind = engine
 
 SessionLocal = sessionmaker(bind=engine)

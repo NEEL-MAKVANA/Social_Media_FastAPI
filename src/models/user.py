@@ -9,8 +9,8 @@ def uuid_generator():
     return str(uuid.uuid4())
 
 
-def create_tables():
-    Base.metadata.create_all(engine)
+# def create_tables():
+#     Base.metadata.create_all(engine)
 
 
 class User(Base):
@@ -29,4 +29,4 @@ class User(Base):
     isverified = Column(Boolean, default=False)
 
 
-create_tables()
+# create_tables()

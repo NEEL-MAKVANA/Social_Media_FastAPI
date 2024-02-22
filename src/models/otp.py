@@ -9,8 +9,8 @@ def uuid_generator():
     return str(uuid.uuid4())
 
 
-def create_tables():
-    Base.metadata.create_all(engine)
+# def create_tables():
+#     Base.metadata.create_all(engine)
 
 
 class Otp(Base):
@@ -20,10 +20,9 @@ class Otp(Base):
     email = Column(String(36))
     otp = Column(String(6))
     attempts = Column(Integer, default=1)
-
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    user = relationship("User")
+    user = relationship("User", cascade="all")
 
 
-create_tables()
+# create_tables()

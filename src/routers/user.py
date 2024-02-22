@@ -399,13 +399,13 @@ def login_otp_generation(login_field: Login_Schema):
     db.add(newOtp)
     db.commit()
 
-    server.sendmail(
-        "makvananickfun@gmail.com",
-        find_user.email,
-        f"Your Otp is {random_number} which is valid for 1 minute",
-    )
-    print("mail sent")
-    server.quit()
+    # server.sendmail(
+    #     "makvananickfun@gmail.com",
+    #     find_user.email,
+    #     f"Your Otp is {random_number} which is valid for 1 minute",
+    # )
+    # print("mail sent")
+    # server.quit()
 
     payload = {
         "user_email": find_user.email,
