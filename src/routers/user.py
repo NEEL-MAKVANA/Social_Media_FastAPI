@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from fastapi import FastAPI, HTTPException, status, Depends, Security
+from fastapi import HTTPException, status, Security
 from database.db_config import SessionLocal
 from src.models.user import User
 from src.models.otp import Otp
@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 import smtplib
 from datetime import datetime, timedelta
 import random
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from src.schemas.user import (
     Print_user,
@@ -23,7 +23,7 @@ from src.schemas.user import (
 )
 
 
-auth_router = APIRouter(tags=["Auth Router"])
+auth_router = APIRouter(tags=["User Auth Router"])
 db = SessionLocal()
 
 # SMTP server setup
@@ -36,7 +36,7 @@ server.login("makvananickfun@gmail.com", "reatchmqofwmjpfg")
 # Secret key to sign the JWT
 SECRET_KEY = "nk168"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 400
 
 
 # Create a PassLib context
@@ -53,11 +53,13 @@ def pass_checker(user_pass, hash_pass):
         raise HTTPException(status_code=401, detail="Password is incorrect")
 
 
-# get all user which has isactive=True and isdeleted=False and isverified==True
+# get all user which has is_active=True and is_deleted=False and is_verified==True
 @auth_router.get("/", response_model=list[Print_user], status_code=status.HTTP_200_OK)
 def get_all_user():
     get_all = db.query(User).filter(
-        (User.isactive == True) & (User.isdeleted == False) & (User.isverified == True)
+        (User.is_active == True)
+        & (User.is_deleted == False)
+        & (User.is_verified == True)
     )
 
     print(get_all)
@@ -68,35 +70,35 @@ def get_all_user():
 @auth_router.post("/add_user", response_model=Users, status_code=status.HTTP_200_OK)
 def add_user(user: Users):
 
-    find_user_isverified_true = (
+    find_user_is_verified_true = (
         db.query(User)
         .filter(
             ((User.uname == user.uname) & (User.email == user.email))
-            & (User.isverified == True)
+            & (User.is_verified == True)
         )
         .first()
     )
 
-    find_user_isverified_false = (
+    find_user_is_verified_false = (
         db.query(User)
         .filter(
             ((User.uname == user.uname) & (User.email == user.email))
-            & (User.isverified == False)
+            & (User.is_verified == False)
         )
         .first()
     )
 
-    if find_user_isverified_true:
+    if find_user_is_verified_true:
         raise HTTPException(
             status_code=status.HTTP_406_NOT_ACCEPTABLE,
             detail="person already exist and already verified with this email id and userid",
         )
 
-    if find_user_isverified_false:
+    if find_user_is_verified_false:
 
-        find_user_isverified_false.isactive = True
-        find_user_isverified_false.isdeleted = False
-        db.add(find_user_isverified_false)
+        find_user_is_verified_false.is_active = True
+        find_user_is_verified_false.is_deleted = False
+        db.add(find_user_is_verified_false)
         db.commit()
 
         raise HTTPException(
@@ -120,6 +122,7 @@ def add_user(user: Users):
 
     hashed_password = pwd_context.hash(user.password)
     print(f"\n\nthe hash password is***********************{hashed_password}\n\n")
+
     newUser = User(
         fname=user.fname,
         lname=user.lname,
@@ -165,9 +168,9 @@ def delete_user(uname: str):
 
     if find_user:
 
-        find_user.isactive = False
-        find_user.isdeleted = True
-        find_user.isverified = False
+        find_user.is_active = False
+        find_user.is_deleted = True
+        find_user.is_verified = False
         # db.delete(find_user)
         db.add(find_user)
         db.commit()
@@ -267,9 +270,9 @@ def final_authentication(final_auth: Final_Auth_schema):
         db.commit()
         return "Otp Expires"
 
-    find_user_from_usertable.isverified = True
-    find_user_from_usertable.isactive = True
-    find_user_from_usertable.isdeleted = False
+    find_user_from_usertable.is_verified = True
+    find_user_from_usertable.is_active = True
+    find_user_from_usertable.is_deleted = False
 
     db.delete(find_user_acc_otp)
     db.commit()
@@ -328,6 +331,7 @@ def reset_pass_token_generation(entered_email: Reset_Pass_Email):
     email = find_email_user_table.email
     payload = {
         "user_email": email,
+        "user_id": find_email_user_table.id,
         "exp": datetime.utcnow() + timedelta(minutes=10),
     }
 
@@ -378,7 +382,7 @@ def login_otp_generation(login_field: Login_Schema):
         db.query(User)
         .filter(
             (User.uname == login_field.uname)
-            & ((User.isactive == True) & (User.isdeleted == False))
+            & ((User.is_active == True) & (User.is_deleted == False))
         )
         .first()
     )
@@ -409,7 +413,8 @@ def login_otp_generation(login_field: Login_Schema):
 
     payload = {
         "user_email": find_user.email,
-        "exp": datetime.utcnow() + timedelta(minutes=10),
+        "user_id": find_user.id,
+        "exp": datetime.utcnow() + timedelta(minutes=400),
     }
 
     access_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)

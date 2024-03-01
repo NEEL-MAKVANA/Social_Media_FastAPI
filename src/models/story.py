@@ -5,13 +5,11 @@ import uuid
 from datetime import datetime
 
 
-class Otp(Base):
-    __tablename__ = "otps"
+class Story(Base):
+    __tablename__ = "stories"
     id = Column(String(36), primary_key=True, default=str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    email = Column(String(36))
-    otp = Column(String(6))
-    attempts = Column(Integer, default=1)
+    types = Column(String(10))
+    likes = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user = relationship("User")

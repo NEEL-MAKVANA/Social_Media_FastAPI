@@ -6,6 +6,11 @@ from sqlalchemy import pool
 from alembic import context
 from src.models.otp import Otp
 from src.models.user import User
+from src.models.follower_following import FollowerFollowing
+from src.models.post import Post
+from src.models.story import Story
+
+# from src.models.story import Story``
 from database.db_config import Base
 
 # this is the Alembic Config object, which provides

@@ -25,7 +25,7 @@ class Print_user(BaseModel):
     lname: str
     uname: str
     email: str
-    isverified: bool
+    is_verified: bool
 
 
 class Auth_schema(BaseModel):
