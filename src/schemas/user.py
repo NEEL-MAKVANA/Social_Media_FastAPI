@@ -6,7 +6,7 @@ class OurBasemodel(BaseModel):
         from_attributes = True
 
 
-class Users(BaseModel):
+class Get_Users(BaseModel):
     fname: str
     lname: str
     uname: str

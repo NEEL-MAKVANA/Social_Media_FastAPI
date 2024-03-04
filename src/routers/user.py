@@ -8,10 +8,9 @@ import smtplib
 from datetime import datetime, timedelta
 import random
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
 from src.schemas.user import (
     Print_user,
-    Users,
+    Get_Users,
     Update_Users,
     All_Otp,
     Auth_schema,
@@ -21,39 +20,31 @@ from src.schemas.user import (
     Login_OTP,
     Login_Schema,
 )
-
+import uuid
+from src.utils.utils_user_auth_token import get_token,decode_token_user_email,decode_token_user_id
 
 auth_router = APIRouter(tags=["User Auth Router"])
 db = SessionLocal()
 
-# SMTP server setup
-server = smtplib.SMTP("smtp.gmail.com", 587)
-server.starttls()
-server.login("makvananickfun@gmail.com", "reatchmqofwmjpfg")
-
-# auth-using-toke-global variable
-
-# Secret key to sign the JWT
-SECRET_KEY = "nk168"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 400
+#--------- SMTP SERVER SETUP ------------#
+# server = smtplib.SMTP("smtp.gmail.com", 587)
+# server.starttls()
+# server.login("makvananickfun@gmail.com", "reatchmqofwmjpfg")
 
 
-# Create a PassLib context
+# -------------------- CREATE A PASSLIB CONTEXT ----------------#
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# check whether the hash password and user entered password is same or not?
-
-
+#----------------- CHECK WHETHER THE HASH PASSWORD AND USER ENTERED PASSWORD IS SAME OR NOT? -------------#
 def pass_checker(user_pass, hash_pass):
     if pwd_context.verify(user_pass, hash_pass):
-        print("\n\n***********both password are same********\n\n")
+        print("\n\n-------both password are same ----------\n\n")
         return True
     else:
         raise HTTPException(status_code=401, detail="Password is incorrect")
 
 
-# get all user which has is_active=True and is_deleted=False and is_verified==True
+#-------------------- GET ALL USER WHICH HAS IS_ACTIVE=TRUE AND IS_DELETED=FALSE AND IS_VERIFIED==TRUE --------------#
 @auth_router.get("/", response_model=list[Print_user], status_code=status.HTTP_200_OK)
 def get_all_user():
     get_all = db.query(User).filter(
@@ -61,14 +52,14 @@ def get_all_user():
         & (User.is_deleted == False)
         & (User.is_verified == True)
     )
-
     print(get_all)
     return get_all
 
 
-# post the new user
-@auth_router.post("/add_user", response_model=Users, status_code=status.HTTP_200_OK)
-def add_user(user: Users):
+# -------------------------POST THE NEW USER ------------------------#
+
+@auth_router.post("/add_user", response_model=Get_Users, status_code=status.HTTP_200_OK)
+def add_user(user: Get_Users):
 
     find_user_is_verified_true = (
         db.query(User)
@@ -91,7 +82,7 @@ def add_user(user: Users):
     if find_user_is_verified_true:
         raise HTTPException(
             status_code=status.HTTP_406_NOT_ACCEPTABLE,
-            detail="person already exist and already verified with this email id and userid",
+            detail="person already exist and already verified with this email and user name",
         )
 
     if find_user_is_verified_false:
@@ -103,7 +94,7 @@ def add_user(user: Users):
 
         raise HTTPException(
             status_code=status.HTTP_406_NOT_ACCEPTABLE,
-            detail="person already exist but didnt verified yet !",
+            detail="person already exist but didn't verified yet !",
         )
 
     find_user_name = db.query(User).filter(User.uname == user.uname).first()
@@ -120,29 +111,24 @@ def add_user(user: Users):
             status_code=status.HTTP_302_FOUND, detail="User email already taken"
         )
 
-    hashed_password = pwd_context.hash(user.password)
-    print(f"\n\nthe hash password is***********************{hashed_password}\n\n")
-
     newUser = User(
+        id=str(uuid.uuid4()),
         fname=user.fname,
         lname=user.lname,
         uname=user.uname,
         email=user.email,
-        password=hashed_password,
+        password=pwd_context.hash(user.password),
     )
-
-    pass_checker(user.password, hashed_password)
     db.add(newUser)
     db.commit()
     return newUser
 
 
-# modified user (given uname )
-
+#------------------------ MODIFIED USER (GIVEN UNAME) --------------------------#
 
 @auth_router.put(
     "/modify_user/{uname}",
-    response_model=Users,
+    response_model=Get_Users,
     status_code=status.HTTP_200_OK,
 )
 def put_user(uname: str, user: Update_Users):
@@ -161,17 +147,16 @@ def put_user(uname: str, user: Update_Users):
     return find_user
 
 
-# delete user (given uname)
+#---------------------------- DELETE USER (GIVEN UNAME) ----------------------#
+
 @auth_router.delete("/delete_user/{uname}")
 def delete_user(uname: str):
     find_user = db.query(User).filter(User.uname == uname).first()
 
     if find_user:
-
         find_user.is_active = False
         find_user.is_deleted = True
         find_user.is_verified = False
-        # db.delete(find_user)
         db.add(find_user)
         db.commit()
     else:
@@ -179,12 +164,7 @@ def delete_user(uname: str):
 
     return "user deleted successfully"
 
-
-# otp section
-
-
-# get all the otps
-
+#------------------------------ GET ALL THE OTPS---------------------------#
 
 @auth_router.get(
     "/get_allopts", response_model=list[All_Otp], status_code=status.HTTP_200_OK
@@ -199,8 +179,7 @@ def get_all_otp():
     return all_otp
 
 
-# post otp
-
+#----------------------------------- GENERATE OTP ---------------------------------#
 
 @auth_router.post("/generate_otp")
 def authentication(auth_user: Auth_schema):
@@ -210,8 +189,6 @@ def authentication(auth_user: Auth_schema):
     if not find_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
-    # generate otp
-
     random_number = random.randint(100000, 999999)
     print(random_number)
 
@@ -220,23 +197,23 @@ def authentication(auth_user: Auth_schema):
         email=auth_user.email,
         otp=str(random_number),
     )
-    print(f"\n\n ********** OTP is ********** {random_number} *********\n\n")
+    print(f"\n\n ---------- OTP is ----------- {random_number} ------------\n\n")
     db.add(newOtp)
     db.commit()
 
-    # otp send to email
-    server.sendmail(
-        "makvananickfun@gmail.com",
-        auth_user.email,
-        f"Your Otp is {random_number} which is valid for 1 minute",
-    )
-    print("mail sent")
-    server.quit()
-    return "otp generation successfull"
+    # # otp send to email
+    # server.sendmail(
+    #     "makvananickfun@gmail.com",
+    #     auth_user.email,
+    #     f"Your Otp is {random_number} which is valid for 1 minute",
+    # )
+    # print("mail sent")
+    # server.quit()
+
+    return "otp generated successful"
 
 
-# otp delete (final authentication)
-
+#------------------------- OTP DELETE (FINAL AUTHENTICATION) -----------------------------
 
 @auth_router.post("/final_authentication", status_code=status.HTTP_202_ACCEPTED)
 def final_authentication(final_auth: Final_Auth_schema):
@@ -262,7 +239,6 @@ def final_authentication(final_auth: Final_Auth_schema):
         )
 
     prev_time = find_user_acc_otp.created_at
-    # print(prev_time)
     curr_time = datetime.utcnow()
 
     if (curr_time - prev_time) > timedelta(seconds=60):
@@ -277,34 +253,17 @@ def final_authentication(final_auth: Final_Auth_schema):
     db.delete(find_user_acc_otp)
     db.commit()
 
-    payload = {
-        "user_id": find_user_from_usertable.id,
-        "exp": datetime.utcnow() + timedelta(minutes=5),
-    }
-
-    access_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    print(type(access_token))
-
+    access_token = get_token(find_user_from_usertable.id,find_user_from_usertable.email,find_user_from_usertable.uname)
     return {"access_token": access_token}
 
+#-------------------------ACCESS THE PROTECTED RESOURCE -----------------#
 
 # OAuth2 scheme
-oauth2_scheme_data_access = OAuth2PasswordBearer(tokenUrl="/protected_resource")
-
+oauth2_scheme_data_access = OAuth2PasswordBearer(tokenUrl="/final_authentication")
 
 @auth_router.post("/protected_resource")
 async def protected_resource(token: str = Security(oauth2_scheme_data_access)):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("user_id")
-        print(user_id)
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid token",
-            )
-
-        # Fetch user data using `user_id`
+        user_id = decode_token_user_id(token)
         user = db.query(User).filter(User.id == user_id).first()
 
         if not user:
@@ -312,12 +271,8 @@ async def protected_resource(token: str = Security(oauth2_scheme_data_access)):
 
         return {"message": f"Congooo!! you have an acces of very crucial data"}
 
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid token",
-        )
 
+#---------------------------------RESET PASSWORD TOKEN GENERATION -------------------------------#
 
 @auth_router.post(
     "/reset_password_token_generation", status_code=status.HTTP_202_ACCEPTED
@@ -328,35 +283,19 @@ def reset_pass_token_generation(entered_email: Reset_Pass_Email):
     )
     if not find_email_user_table:
         return "oops! email not found "
-    email = find_email_user_table.email
-    payload = {
-        "user_email": email,
-        "user_id": find_email_user_table.id,
-        "exp": datetime.utcnow() + timedelta(minutes=10),
-    }
-
-    access_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    return access_token
+    access_token = get_token(find_email_user_table.id,find_email_user_table.email,find_email_user_table.uname)
+    return {"access_token":access_token}
 
 
+
+#--------------------------------RESET PASSWORD -----------------------#
 # OAuth2 scheme
-oauth2_scheme_reset_pass = OAuth2PasswordBearer(tokenUrl="/reset_password")
-
+oauth2_scheme_reset_pass = OAuth2PasswordBearer(tokenUrl="/reset_password_token_generation")
 
 @auth_router.post("/reset_password", status_code=status.HTTP_202_ACCEPTED)
 def reset_pass(new_pass: New_Pass, token: str = Security(oauth2_scheme_reset_pass)):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email_id = payload.get("user_email")
-        # print(user_id)
-        if not email_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid token",
-            )
-
-        # Fetch user data using `email_id`
-        user = db.query(User).filter(User.email == email_id).first()
+        user_email = decode_token_user_email(token)
+        user = db.query(User).filter(User.email == user_email).first()
 
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -368,13 +307,8 @@ def reset_pass(new_pass: New_Pass, token: str = Security(oauth2_scheme_reset_pas
 
         return {"message": f"Your password successfully changed"}
 
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid token",
-        )
 
-
+#-------------------------------LOGIN OTP AND TOKEN GENERATION -----------------------#
 @auth_router.post("/login_otp_generation")
 def login_otp_generation(login_field: Login_Schema):
 
@@ -399,7 +333,7 @@ def login_otp_generation(login_field: Login_Schema):
         email=find_user.email,
         otp=str(random_number),
     )
-    print(f"\n\n ********** OTP is ********** {random_number} *********\n\n")
+    print(f"\n\n ------ OTP is ------- {random_number} ----------\n\n")
     db.add(newOtp)
     db.commit()
 
@@ -410,39 +344,23 @@ def login_otp_generation(login_field: Login_Schema):
     # )
     # print("mail sent")
     # server.quit()
-
-    payload = {
-        "user_email": find_user.email,
-        "user_id": find_user.id,
-        "exp": datetime.utcnow() + timedelta(minutes=400),
-    }
-
-    access_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    print(type(access_token))
-
-    return {"access token": access_token}
+    access_token = get_token(find_user.id,find_user.email,find_user.uname)
+    return {"access_token": access_token}
 
 
+
+#--------------------------FINAL LOGIN USING TOKEN AND OTP---------------------#
 # OAuth2 scheme
 oauth2_login = OAuth2PasswordBearer(tokenUrl="/login_otp_generation")
 
-
 @auth_router.post("/final_login_auth")
 def final_login_auth(enter_otp: Login_OTP, token: str = Security(oauth2_login)):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email_id = payload.get("user_email")
-        # print(user_id)
-        if not email_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid token",
-            )
+        user_email = decode_token_user_email(token)
 
         # Fetch user data using `email_id`
         email_otp = (
             db.query(Otp)
-            .filter((Otp.otp == enter_otp.otp) & (Otp.email == email_id))
+            .filter((Otp.otp == enter_otp.otp) & (Otp.email == user_email))
             .first()
         )
 
@@ -462,8 +380,3 @@ def final_login_auth(enter_otp: Login_OTP, token: str = Security(oauth2_login)):
 
         return {"message": f"You are Successfully login"}
 
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid token",
-        )

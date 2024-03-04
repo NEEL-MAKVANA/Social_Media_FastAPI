@@ -1,24 +1,20 @@
 from fastapi import APIRouter
-from fastapi import FastAPI, HTTPException, status, Depends, Security
+from fastapi import  HTTPException, status, Security
 from database.db_config import SessionLocal
 from src.models.user import User
 from src.models.follower_following import FollowerFollowing
 from src.models.user import User
-from passlib.context import CryptContext
 import smtplib
-from datetime import datetime, timedelta
-import random
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import JWTError, jwt
-from cofig import secret_key
-from cofig import algorithm
+from fastapi.security import OAuth2PasswordBearer
+from src.utils.utils_user_auth_token import decode_token_user_id
 
 
 follower_following_router = APIRouter(tags=["Follower-Following Router"])
 db = SessionLocal()
 
 
-# get follower of particular user
+# ------------------------GET FOLLOWER OF PARTICULAR USER--------------------#
+
 @follower_following_router.get("/getfollower/{path_user_id}")
 def get_follower(path_user_id: str):
     find_user_in_table = (
@@ -45,7 +41,8 @@ def get_follower(path_user_id: str):
     # return find_user_in_table.follower
 
 
-# get following of particular user
+#---------------------------- GET FOLLOWING OF PARTICULAR USER---------------------#
+
 @follower_following_router.get("/getfollowing/{path_user_id}")
 def get_following(path_user_id: str):
     find_user_in_table = (
@@ -72,7 +69,8 @@ def get_following(path_user_id: str):
     # return find_user_in_table.following
 
 
-# get follower count of particular user
+# -------------------------------GET FOLLOWER COUNT OF PARTICULAR USER-------------------#
+
 @follower_following_router.get("/getfollowercount/{path_user_id}")
 def get_follower(path_user_id: str):
     find_user_in_table = (
@@ -88,7 +86,7 @@ def get_follower(path_user_id: str):
     return total_follower
 
 
-# get following count of particular user
+# -------------------------------GET FOLLOWING COUNT OF PARTICULAR USER ---------------------------#
 @follower_following_router.get("/getfollowingcount/{path_user_id}")
 def get_following(path_user_id: str):
     find_user_in_table = (
@@ -104,9 +102,10 @@ def get_following(path_user_id: str):
     return total_following
 
 
+
+#--------------------------------FOLLOW REQUEST -----------------------------#
 # OAuth2 scheme
 follow_auth_scheme = OAuth2PasswordBearer(tokenUrl="/login_otp_generation")
-
 
 @follower_following_router.put("/followrequest/{path_user_id}")
 def follow_request(path_user_id: str, token: str = Security(follow_auth_scheme)):
@@ -118,28 +117,13 @@ def follow_request(path_user_id: str, token: str = Security(follow_auth_scheme))
             status_code=status.HTTP_404_NOT_FOUND, detail="path user id not found"
         )
 
-    try:
-        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
-        token_user_id = str(payload.get("user_id"))
-        print(
-            f"----------------------------------------{token_user_id}----------------------"
-        )
+    token_user_id = decode_token_user_id(token)
 
-        if not token_user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid token",
-            )
-
-        if token_user_id == path_user_id:
+    if token_user_id == path_user_id:
             raise HTTPException(
                 status_code=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION,
                 detail="token generated id path id both are same",
             )
-    except:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="invalid token"
-        )
 
     find_current_user_id_in_table = (
         db.query(FollowerFollowing)
@@ -157,7 +141,7 @@ def follow_request(path_user_id: str, token: str = Security(follow_auth_scheme))
     empty_following = []
 
     if not find_current_user_id_in_table:
-        print("---------------hello -----1----------")
+        print("--------------hello -----1----------")
         empty_following.append(path_user_id)
         current_user_entry = FollowerFollowing(
             user_id=token_user_id,
@@ -203,9 +187,10 @@ def follow_request(path_user_id: str, token: str = Security(follow_auth_scheme))
         db.add(find_path_user_id_in_table)
         db.commit()
 
+    return "Follow Successfull"
 
-# unfollow user
 
+#--------------------------------- UNFOLLOW USER------------------------------#
 
 @follower_following_router.put("/unfollowrequest/{path_user_id}")
 def unfollow_request(path_user_id: str, token: str = Security(follow_auth_scheme)):
@@ -217,28 +202,19 @@ def unfollow_request(path_user_id: str, token: str = Security(follow_auth_scheme
             status_code=status.HTTP_404_NOT_FOUND, detail="path user id not found"
         )
 
-    try:
-        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
-        token_user_id = str(payload.get("user_id"))
-        print(
-            f"----------------------------------------{token_user_id}----------------------"
-        )
+    token_user_id = decode_token_user_id(token)
 
-        if not token_user_id:
+    if not token_user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Invalid token",
             )
 
-        if token_user_id == path_user_id:
+    if token_user_id == path_user_id:
             raise HTTPException(
                 status_code=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION,
                 detail="token generated id path id both are same",
             )
-    except:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="invalid token"
-        )
 
     find_current_user_id_in_table = (
         db.query(FollowerFollowing)
@@ -253,7 +229,7 @@ def unfollow_request(path_user_id: str, token: str = Security(follow_auth_scheme
     )
 
     if find_path_user_id_in_table and find_current_user_id_in_table:
-        print("------------------------ unfollow -------------------")
+        print("-------------------- unfollow -------------------")
         take_following = find_current_user_id_in_table.following.copy()
         take_following.remove(path_user_id)
         find_current_user_id_in_table.following = take_following
@@ -266,11 +242,10 @@ def unfollow_request(path_user_id: str, token: str = Security(follow_auth_scheme
         db.add(find_path_user_id_in_table)
         db.commit()
 
-        return "unfollow operation successfull"
+        return "Unfollow Successfull"
 
 
-# delete table entry for admin side only
-
+# ------------------------------DELETE TABLE ENTRY FOR ADMIN SIDE ONLY ----------------------#
 
 @follower_following_router.delete(
     "/deletefollowerfollowing/{id}", status_code=status.HTTP_202_ACCEPTED
