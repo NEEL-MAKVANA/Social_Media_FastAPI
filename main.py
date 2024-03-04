@@ -9,3 +9,4 @@ app = FastAPI(title="User Authentication System")
 app.include_router(auth_router)
 app.include_router(follower_following_router)
 app.include_router(post_router)
+

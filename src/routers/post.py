@@ -6,21 +6,32 @@ from src.models.post import Post
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from cofig import secret_key, algorithm
-from src.schemas.post import ModifyPost, AddPost, CommentPost
+from src.schemas.post import ModifyPost, AddPost, CommentPost,GetPost
 
 
 post_router = APIRouter(tags=["Post Router"])
 db = SessionLocal()
 
-
-@post_router.get("/getpost")
+#------------------get all the post-------------------#
+@post_router.get("/getpost",response_model=list[GetPost],status_code=status.HTTP_200_OK)
 def get_all_posts():
-    pass
+    all_post = db.query(Post).filter((Post.is_active==True) & (Post.is_deleted==False))
+    return all_post
 
 
+#------------------get post by user_id------------------#
+@post_router.get("/getpost/{user_id}",response_model=list[GetPost],status_code=status.HTTP_200_OK)
+def get_all_posts(user_id:str):
+    find_user=db.query(User).filter(User.id == user_id).first()
+    if not find_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="user not found")
+    all_post = db.query(Post).filter(Post.user_id==user_id).all()
+    return all_post
+
+
+#----------------- add new post -------------------------#
 # OAuth2 scheme
 post_auth_scheme = OAuth2PasswordBearer(tokenUrl="/login_otp_generation")
-
 
 @post_router.post("/addpost", response_model=AddPost)
 def add_post(addpost: AddPost, token: str = Security(post_auth_scheme)):
@@ -57,6 +68,8 @@ def add_post(addpost: AddPost, token: str = Security(post_auth_scheme)):
     return newPost
 
 
+
+#------------------- modify post ----------------------------#
 @post_router.put("/modifypost/{post_id}")
 def modify_post(post_id: str, modify_post: ModifyPost):
     find_post = db.query(Post).filter(Post.id == post_id).first()
@@ -69,6 +82,8 @@ def modify_post(post_id: str, modify_post: ModifyPost):
     pass
 
 
+
+#-------------------------- delete post -----------------------#
 @post_router.delete("/deletepost/{post_id}")
 def delete_post(post_id: str):
     find_post = db.query(Post).filter(Post.id == post_id).first()
@@ -80,6 +95,8 @@ def delete_post(post_id: str):
     pass
 
 
+
+#---------------------like post --------------------------------#
 @post_router.put("/likepost/{post_id}")
 def like_post(post_id: str):
     find_post = db.query(Post).filter(Post.id == post_id).first()
@@ -92,6 +109,7 @@ def like_post(post_id: str):
     return "post has benn liked "
 
 
+#-------------------------dislike post -------------------------#
 @post_router.put("/dislikepost/{post_id}")
 def dislike_post(post_id: str):
     find_post = db.query(Post).filter(Post.id == post_id).first()
@@ -104,6 +122,7 @@ def dislike_post(post_id: str):
     return "post has benn disliked "
 
 
+#-------------------------------comment on post -------------------#
 @post_router.put("/commentpost/{post_id}")
 def comment_post(
     post_id: str, cmt: CommentPost, token: str = Security(post_auth_scheme)
