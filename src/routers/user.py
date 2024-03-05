@@ -132,10 +132,14 @@ def add_user(user: Get_Users):
     status_code=status.HTTP_200_OK,
 )
 def put_user(uname: str, user: Update_Users):
-    find_user = db.query(User).filter(User.uname == uname).first()
+    find_user = db.query(User).filter(User.uname == uname ).first()
+
+    if find_user.is_verified==False:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not verified yet")
 
     if not find_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not found or User not verified yet")
+
 
     hashed_password = pwd_context.hash(user.password)
     find_user.fname = user.fname
@@ -160,7 +164,7 @@ def delete_user(uname: str):
         db.add(find_user)
         db.commit()
     else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not found")
 
     return "user deleted successfully"
 
@@ -264,10 +268,12 @@ oauth2_scheme_data_access = OAuth2PasswordBearer(tokenUrl="/final_authentication
 @auth_router.post("/protected_resource")
 async def protected_resource(token: str = Security(oauth2_scheme_data_access)):
         user_id = decode_token_user_id(token)
-        user = db.query(User).filter(User.id == user_id).first()
+        user = db.query(User).filter(User.id == user_id , User.is_verified==True).first()
 
+        if user.is_verified==False:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not verified yet")
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not found")
 
         return {"message": f"Congooo!! you have an acces of very crucial data"}
 
@@ -279,10 +285,12 @@ async def protected_resource(token: str = Security(oauth2_scheme_data_access)):
 )
 def reset_pass_token_generation(entered_email: Reset_Pass_Email):
     find_email_user_table = (
-        db.query(User).filter(User.email == entered_email.email).first()
+        db.query(User).filter(User.email == entered_email.email,User.is_verified==True).first()
     )
+    if find_email_user_table.is_verified==False:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User with this email not verified yet")
     if not find_email_user_table:
-        return "oops! email not found "
+         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User with this email not found")
     access_token = get_token(find_email_user_table.id,find_email_user_table.email,find_email_user_table.uname)
     return {"access_token":access_token}
 
@@ -295,10 +303,12 @@ oauth2_scheme_reset_pass = OAuth2PasswordBearer(tokenUrl="/reset_password_token_
 @auth_router.post("/reset_password", status_code=status.HTTP_202_ACCEPTED)
 def reset_pass(new_pass: New_Pass, token: str = Security(oauth2_scheme_reset_pass)):
         user_email = decode_token_user_email(token)
-        user = db.query(User).filter(User.email == user_email).first()
+        user = db.query(User).filter(User.email == user_email,User.is_verified==True).first()
+        if user.is_verified==False:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not verified yet")
 
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not found")
 
         hashed_password = pwd_context.hash(new_pass.password)
         user.password = hashed_password
@@ -308,7 +318,7 @@ def reset_pass(new_pass: New_Pass, token: str = Security(oauth2_scheme_reset_pas
         return {"message": f"Your password successfully changed"}
 
 
-#-------------------------------LOGIN OTP AND TOKEN GENERATION -----------------------#
+#-------------------------------LOGIN (OTP AND TOKEN GENERATION) -----------------------#
 @auth_router.post("/login_otp_generation")
 def login_otp_generation(login_field: Login_Schema):
 
@@ -316,13 +326,13 @@ def login_otp_generation(login_field: Login_Schema):
         db.query(User)
         .filter(
             (User.uname == login_field.uname)
-            & ((User.is_active == True) & (User.is_deleted == False))
+            & ((User.is_active == True) & (User.is_verified==True) & (User.is_deleted == False))
         )
         .first()
     )
 
     if not find_user:
-        return "User not found"
+        return "User not found or User not verified"
 
     if not pwd_context.verify(login_field.password, find_user.password):
         return "Wrong password entered"
@@ -370,7 +380,7 @@ def final_login_auth(enter_otp: Login_OTP, token: str = Security(oauth2_login)):
         prev_time = email_otp.created_at
         curr_time = datetime.utcnow()
 
-        if (curr_time - prev_time) > timedelta(seconds=60):
+        if (curr_time - prev_time) > timedelta(seconds=120):
             db.delete(email_otp)
             db.commit()
             return "Otp Expires"

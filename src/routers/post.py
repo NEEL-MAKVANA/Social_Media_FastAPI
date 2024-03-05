@@ -3,6 +3,7 @@ from fastapi import HTTPException, status, Security
 from database.db_config import SessionLocal
 from src.models.user import User
 from src.models.post import Post
+from src.models.follower_following import FollowerFollowing
 from fastapi.security import OAuth2PasswordBearer
 from src.schemas.post import ModifyPost, AddPost, CommentPost,GetPost
 import uuid
@@ -13,26 +14,55 @@ from src.utils.utils_user_auth_token import decode_token_user_id
 post_router = APIRouter(tags=["Post Router"])
 db = SessionLocal()
 
-#------------------GET ALL THE POST-------------------#
+# OAuth2 scheme
+post_auth_scheme = OAuth2PasswordBearer(tokenUrl="/login_otp_generation")
+
+#------------------GET ALL THE POST FROM THE TABLE-------------------#
 @post_router.get("/getpost",response_model=list[GetPost],status_code=status.HTTP_200_OK)
 def get_all_posts():
     all_post = db.query(Post).filter((Post.is_active==True) & (Post.is_deleted==False))
+    if not all_post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="POST TABLE EMPTY")
     return all_post
 
 
 #------------------GET POST BY USER_ID------------------#
 @post_router.get("/getpost/{user_id}",response_model=list[GetPost],status_code=status.HTTP_200_OK)
 def get_all_posts(user_id:str):
+
     find_user=db.query(User).filter(User.id == user_id).first()
     if not find_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="user not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="USER NOT FOUND")
     all_post = db.query(Post).filter(Post.user_id==user_id).all()
+    if not all_post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="POST NOT FOUND WITH THIS PARTICULAR USER ID")
+
     return all_post
+
+#-----------------GET POST OF MY FOLLOWING LIST--------------#
+
+@post_router.get("/getpost_following_list",response_model=list[GetPost],status_code=status.HTTP_200_OK)
+def get_all_posts(token: str = Security(post_auth_scheme)):
+    token_user_id = decode_token_user_id(token)
+    find_user=db.query(FollowerFollowing).filter(FollowerFollowing.user_id == token_user_id).first()
+    if not find_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="USER NOT FOUND")
+
+    token_following_list = find_user.following.copy()
+
+    print(token_following_list)
+    list_of_post=[]
+    for id in token_following_list:
+        all_post=db.query(Post).filter(Post.user_id == id).all()
+        for post in all_post:
+            list_of_post.append(post)
+
+    return list_of_post
+
 
 
 #----------------- ADD NEW POST -------------------------#
-# OAuth2 scheme
-post_auth_scheme = OAuth2PasswordBearer(tokenUrl="/login_otp_generation")
+
 
 @post_router.post("/addpost", response_model=AddPost)
 def add_post(addpost: AddPost, token: str = Security(post_auth_scheme)):
