@@ -22,6 +22,7 @@ from src.schemas.user import (
 )
 import uuid
 from src.utils.utils_user_auth_token import get_token,decode_token_user_email,decode_token_user_id
+from logs.log_config import logger
 
 auth_router = APIRouter(tags=["User Auth Router"])
 db = SessionLocal()
@@ -47,12 +48,14 @@ def pass_checker(user_pass, hash_pass):
 #-------------------- GET ALL USER WHICH HAS IS_ACTIVE=TRUE AND IS_DELETED=FALSE AND IS_VERIFIED==TRUE --------------#
 @auth_router.get("/", response_model=list[Print_user], status_code=status.HTTP_200_OK)
 def get_all_user():
+    logger.info("Retrieving items from database...")
     get_all = db.query(User).filter(
         (User.is_active == True)
         & (User.is_deleted == False)
         & (User.is_verified == True)
     )
     print(get_all)
+    logger.info("giving all the user which is active right now")
     return get_all
 
 
