@@ -1,9 +1,6 @@
 from loguru import logger
-import sys
-import uuid
-log_id = str(uuid.uuid4())
+# Define the log format including {log_id}
+log_format = "{time:DD-MM-YYYY HH:mm:ss} - {level} - {message}"
 
-logger.add(
-    "logs/app.log", level="INFO", rotation="10 MB", format="{time:YYYY-MM-DD HH:mm:ss} - {level} - {message}"
-)
-logger.add(sys.stdout, level="DEBUG")
+# Add a handler to write logs to file
+logger.add("logs/app.log", level="INFO", rotation="10 MB", format=log_format)

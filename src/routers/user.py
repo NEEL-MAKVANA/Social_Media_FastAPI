@@ -38,10 +38,12 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 #----------------- CHECK WHETHER THE HASH PASSWORD AND USER ENTERED PASSWORD IS SAME OR NOT? -------------#
 def pass_checker(user_pass, hash_pass):
+    logger.info("Checking Password...")
     if pwd_context.verify(user_pass, hash_pass):
-        print("\n\n-------both password are same ----------\n\n")
+        logger.success("Password Matched")
         return True
     else:
+        logger.error("Password is incorrect")
         raise HTTPException(status_code=401, detail="Password is incorrect")
 
 
@@ -55,7 +57,7 @@ def get_all_user():
         & (User.is_verified == True)
     )
     print(get_all)
-    logger.info("giving all the user which is active right now")
+    logger.info(f"Successfully retrievied item from database")
     return get_all
 
 
@@ -325,6 +327,7 @@ def reset_pass(new_pass: New_Pass, token: str = Security(oauth2_scheme_reset_pas
 @auth_router.post("/login_otp_generation")
 def login_otp_generation(login_field: Login_Schema):
 
+    logger.info("Finding user data in database with same credentials...")
     find_user = (
         db.query(User)
         .filter(
@@ -335,17 +338,22 @@ def login_otp_generation(login_field: Login_Schema):
     )
 
     if not find_user:
+        logger.error("User not found or User not verified.")
         return "User not found or User not verified"
 
     if not pwd_context.verify(login_field.password, find_user.password):
+        logger.error("Wrong password entered.")
         return "Wrong password entered"
 
+    logger.info("Otp generation...")
     random_number = random.randint(100000, 999999)
     newOtp = Otp(
         user_id=find_user.id,
         email=find_user.email,
         otp=str(random_number),
     )
+    logger.warning("Otp generated successfully.")
+    logger.info(f"Otp is : {random_number}")
     print(f"\n\n ------ OTP is ------- {random_number} ----------\n\n")
     db.add(newOtp)
     db.commit()
@@ -357,7 +365,9 @@ def login_otp_generation(login_field: Login_Schema):
     # )
     # print("mail sent")
     # server.quit()
+    logger.info("Getting token....")
     access_token = get_token(find_user.id,find_user.email,find_user.uname)
+    logger.success("Getting token successfully.")
     return {"access_token": access_token}
 
 
@@ -368,16 +378,21 @@ oauth2_login = OAuth2PasswordBearer(tokenUrl="/login_otp_generation")
 
 @auth_router.post("/final_login_auth")
 def final_login_auth(enter_otp: Login_OTP, token: str = Security(oauth2_login)):
+        logger.info("Decoding token.....")
         user_email = decode_token_user_email(token)
+        logger.success("Token decoded successfully.")
 
-        # Fetch user data using `email_id`
+        # Fetch user data using email_id
+        logger.info("Fetching data....")
         email_otp = (
             db.query(Otp)
             .filter((Otp.otp == enter_otp.otp) & (Otp.email == user_email))
             .first()
         )
+        logger.success("Data fetch successfully")
 
         if not email_otp:
+            logger.error("Otp Incorrect with this email id..")
             return "otp incorrect with this email id"
 
         prev_time = email_otp.created_at
@@ -386,10 +401,11 @@ def final_login_auth(enter_otp: Login_OTP, token: str = Security(oauth2_login)):
         if (curr_time - prev_time) > timedelta(seconds=120):
             db.delete(email_otp)
             db.commit()
+            logger.error("Otp Expires")
             return "Otp Expires"
 
         db.delete(email_otp)
         db.commit()
-
+        logger.success(f"Successfully login")
         return {"message": f"You are Successfully login"}
 
