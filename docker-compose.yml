@@ -1,15 +1,35 @@
+version: '3.8'
+
+networks:
+  neel-net:
+    driver: bridge
+
 services:
-  app:
-    build:
-      context: .
-    image: sai-pallavi-image
-    container_name: himalayan-container
+  postgres:
+    image: postgres
+    container_name: "postgres_container"
+    environment:
+      POSTGRES_PASSWORD: nk168
+      POSTGRES_DB: mydb  # Specify the database name here
+    ports:
+      - "5433:5432"
+    networks:
+      - neel-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 5
+
+  fastapi:
+    build: .
+    container_name: "fastapi_container"
+    command: "uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
       - "8000:8000"
+    networks:
+      - neel-net
     env_file:
       - ./.env
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
-    networks:
-      - vedant-network
-networks:
-  vedant-network:
+    depends_on:
+      postgres:
+        condition: service_healthy

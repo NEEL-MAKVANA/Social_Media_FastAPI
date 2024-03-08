@@ -7,5 +7,5 @@ logger.add(
     "logs/app.log",
     level="DEBUG",
     rotation="10 MB",
-    format="{time:DD-MM-YYYY HH:mm:ss} - {level} - {message}",
+    format="{time:DD-MM-YYYY hh:mm:ss A} - {level} - {message}",
 )

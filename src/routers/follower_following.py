@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from fastapi import  HTTPException, status, Security
+from fastapi import HTTPException, status, Security
 from database.db_config import SessionLocal
 from src.models.user import User
 from src.models.follower_following import FollowerFollowing
@@ -15,11 +15,14 @@ db = SessionLocal()
 
 # ------------------------GET FOLLOWER OF PARTICULAR USER--------------------#
 
+
 @follower_following_router.get("/getfollower/{path_user_id}")
 def get_follower(path_user_id: str):
     is_verified = verify_user(path_user_id)
     if not is_verified:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Path User not verified yet")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Path User not verified yet"
+        )
     find_user_in_table = (
         db.query(FollowerFollowing)
         .filter(FollowerFollowing.user_id == path_user_id)
@@ -44,13 +47,16 @@ def get_follower(path_user_id: str):
     # return find_user_in_table.follower
 
 
-#---------------------------- GET FOLLOWING OF PARTICULAR USER---------------------#
+# ---------------------------- GET FOLLOWING OF PARTICULAR USER---------------------#
+
 
 @follower_following_router.get("/getfollowing/{path_user_id}")
 def get_following(path_user_id: str):
     is_verified = verify_user(path_user_id)
     if not is_verified:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Path User not verified yet")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Path User not verified yet"
+        )
     find_user_in_table = (
         db.query(FollowerFollowing)
         .filter(FollowerFollowing.user_id == path_user_id)
@@ -77,12 +83,15 @@ def get_following(path_user_id: str):
 
 # -------------------------------GET FOLLOWER COUNT OF PARTICULAR USER-------------------#
 
+
 @follower_following_router.get("/getfollowercount/{path_user_id}")
-def get_follower(path_user_id: str):
+def get_follower_by_count(path_user_id: str):
 
     is_verified = verify_user(path_user_id)
     if not is_verified:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Path User not verified yet")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Path User not verified yet"
+        )
 
     find_user_in_table = (
         db.query(FollowerFollowing)
@@ -99,11 +108,12 @@ def get_follower(path_user_id: str):
 
 # -------------------------------GET FOLLOWING COUNT OF PARTICULAR USER ---------------------------#
 @follower_following_router.get("/getfollowingcount/{path_user_id}")
-def get_following(path_user_id: str):
+def get_following_by_count(path_user_id: str):
     is_verified = verify_user(path_user_id)
     if not is_verified:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Path User not verified yet")
-
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Path User not verified yet"
+        )
 
     find_user_in_table = (
         db.query(FollowerFollowing)
@@ -118,17 +128,18 @@ def get_following(path_user_id: str):
     return total_following
 
 
-
-#--------------------------------FOLLOW REQUEST -----------------------------#
+# --------------------------------FOLLOW REQUEST -----------------------------#
 # OAuth2 scheme
 follow_auth_scheme = OAuth2PasswordBearer(tokenUrl="/login_otp_generation")
+
 
 @follower_following_router.put("/followrequest/{path_user_id}")
 def follow_request(path_user_id: str, token: str = Security(follow_auth_scheme)):
     is_verified = verify_user(path_user_id)
     if not is_verified:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Path User not verified yet")
-
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Path User not verified yet"
+        )
 
     # find path_user_id in user table if that does not exist then we need to generate an exception
     find_path_user_in_user_tbl = db.query(User).filter(User.id == path_user_id).first()
@@ -140,10 +151,10 @@ def follow_request(path_user_id: str, token: str = Security(follow_auth_scheme))
     token_user_id = decode_token_user_id(token)
 
     if token_user_id == path_user_id:
-            raise HTTPException(
-                status_code=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION,
-                detail="token generated id and path id both are same",
-            )
+        raise HTTPException(
+            status_code=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION,
+            detail="token generated id and path id both are same",
+        )
 
     find_current_user_id_in_table = (
         db.query(FollowerFollowing)
@@ -210,15 +221,17 @@ def follow_request(path_user_id: str, token: str = Security(follow_auth_scheme))
     return "Follow Successfull"
 
 
-#--------------------------------- UNFOLLOW USER------------------------------#
+# --------------------------------- UNFOLLOW USER------------------------------#
+
 
 @follower_following_router.put("/unfollowrequest/{path_user_id}")
 def unfollow_request(path_user_id: str, token: str = Security(follow_auth_scheme)):
 
     is_verified = verify_user(path_user_id)
     if not is_verified:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Path User not verified yet")
-
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Path User not verified yet"
+        )
 
     # find path_user_id in user table if that does not exist then we need to generate an exception
     find_path_user_in_user_tbl = db.query(User).filter(User.id == path_user_id).first()
@@ -230,16 +243,16 @@ def unfollow_request(path_user_id: str, token: str = Security(follow_auth_scheme
     token_user_id = decode_token_user_id(token)
 
     if not token_user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid token",
-            )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid token",
+        )
 
     if token_user_id == path_user_id:
-            raise HTTPException(
-                status_code=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION,
-                detail="token generated id and path id both are same",
-            )
+        raise HTTPException(
+            status_code=status.HTTP_203_NON_AUTHORITATIVE_INFORMATION,
+            detail="token generated id and path id both are same",
+        )
 
     find_current_user_id_in_table = (
         db.query(FollowerFollowing)
@@ -271,6 +284,7 @@ def unfollow_request(path_user_id: str, token: str = Security(follow_auth_scheme
 
 
 # ------------------------------DELETE TABLE ENTRY FOR ADMIN SIDE ONLY ----------------------#
+
 
 @follower_following_router.delete(
     "/deletefollowerfollowing/{id}", status_code=status.HTTP_202_ACCEPTED
