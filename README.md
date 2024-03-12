@@ -1,3 +1,3 @@
-# FastAPI-User-Authentication-System
+# FastAPI-Instagram-Clone 
 
-<p> sai pallavi is the best <p>
+<p> this is instagram clone apis which is created in fast api framwork <p>
